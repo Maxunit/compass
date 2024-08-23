@@ -3,51 +3,49 @@ using Compass.Data;
 using Compass.Resources;
 using Compass.UI;
 using Dalamud.Game;
-using Dalamud.Game.ClientState;
-using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.Command;
-using Dalamud.Game.Gui;
-using Dalamud.Interface;
+using Dalamud.Interface.Utility;
 using Dalamud.IoC;
-using Dalamud.Logging;
 using Dalamud.Plugin;
-using Dalamud.Utility.Signatures;
+using Dalamud.Plugin.Services;
 
 namespace Compass;
 
 // ReSharper disable once ClassNeverInstantiated.Global Instantiated by Dalamud
 public partial class Plugin : IDalamudPlugin
 {
+    internal static  IPluginLog             PluginLog { get; private set; } = null!;
     public const     string                 PluginName = "Compass";
     public           string                 Name => PluginName;
     private const    string                 Command = "/compass";
-    private readonly ClientState            _clientState;
-    private readonly CommandManager         _commands;
+    private readonly IClientState           _clientState;
+    private readonly ICommandManager        _commands;
     private readonly Compass                _compass;
     private readonly Configuration          _config;
-    private readonly DalamudPluginInterface _pluginInterface;
+    private readonly IDalamudPluginInterface _pluginInterface;
     private          bool                   _buildingConfigUi;
     private          bool                   _isDisposed;
 
     public Plugin(
-        DalamudPluginInterface           pi
-      , SigScanner                       sigScanner
-      , ClientState                      clientState
-      , CommandManager                   commands
-      , Condition                        condition
-      , TargetManager                    targetManager
-      , [RequiredVersion("1.0")] GameGui gameGui
+        IDalamudPluginInterface           pi
+      , ISigScanner                       sigScanner
+      , IClientState                      clientState
+      , ICommandManager                   commands
+      , ICondition                        condition
+      , IGameGui gameGui
+      , IPluginLog                        pluginLog
+      , IGameInteropProvider              gameInteropProvider
     )
     {
-        SignatureHelper.Initialise(this);
+        PluginLog = pluginLog;
+        gameInteropProvider.InitializeFromAttributes(this);
         _pluginInterface = pi;
         _config          = GetAndMigrateConfig(pi);
         _clientState     = clientState;
         _commands        = commands;
         _compass = new Compass(
             condition,
-            targetManager,
             gameGui,
             _config
         );
@@ -58,8 +56,8 @@ public partial class Plugin : IDalamudPlugin
         _commands.AddHandler(Command, new CommandInfo(CommandHandler)
         {
             HelpMessage =
-                string.Format(i18n.command_help_text, PluginName, Command)
-          , ShowInHelp = true
+                string.Format(i18n.command_help_text, PluginName, Command),
+            ShowInHelp = true
         });
 
         DebugCtor(sigScanner);
@@ -75,10 +73,10 @@ public partial class Plugin : IDalamudPlugin
             _pluginInterface.UiBuilder.Draw += DrawConfigUi;
         }
 
-        if (_clientState.LocalPlayer is not null) OnLogin(null!, null!);
+        if (_clientState.LocalPlayer is not null) OnLogin();
     }
 
-    private void OnLogout(object? sender, EventArgs e)
+    private void OnLogout()
     {
         _pluginInterface.UiBuilder.OpenConfigUi -= OnOpenConfigUi;
         _pluginInterface.UiBuilder.Draw         -= DrawConfigUi;
@@ -86,14 +84,14 @@ public partial class Plugin : IDalamudPlugin
         _pluginInterface.UiBuilder.Draw -= _compass.Draw;
     }
 
-    private void OnLogin(object? sender, EventArgs e)
+    private void OnLogin()
     {
         _pluginInterface.UiBuilder.OpenConfigUi += OnOpenConfigUi;
         _compass.UpdateCachedVariables();
         _pluginInterface.UiBuilder.Draw += _compass.Draw;
     }
 
-    private void CommandHandler(string _command, string args)
+    private void CommandHandler(string command, string args)
     {
         switch (args)
         {
@@ -128,7 +126,7 @@ public partial class Plugin : IDalamudPlugin
         }
     }
 
-    private static Configuration GetAndMigrateConfig(DalamudPluginInterface pi)
+    private static Configuration GetAndMigrateConfig(IDalamudPluginInterface pi)
     {
         var config = pi.GetPluginConfig() as Configuration ?? new Configuration();
         switch (config.Version)
@@ -193,7 +191,7 @@ public partial class Plugin : IDalamudPlugin
 
     #region Debug Partials
 
-    partial void DebugCtor(SigScanner sigScanner);
+    partial void DebugCtor(ISigScanner sigScanner);
 
     partial void DebugDtor();
 
@@ -213,7 +211,7 @@ public partial class Plugin : IDalamudPlugin
         if (disposing)
         {
             // Dispose managed resources
-            OnLogout(null!, null!);
+            OnLogout();
             _clientState.Login  -= OnLogin;
             _clientState.Logout -= OnLogout;
             _commands.RemoveHandler(Command);

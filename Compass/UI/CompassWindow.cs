@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Compass.Data;
 using Dalamud.Interface;
-using Dalamud.Logging;
+using Dalamud.Interface.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Component.GUI;
@@ -346,7 +346,7 @@ internal static class CompassWindow
         backgroundDrawList.PushClipRectFullScreen();
         try
         {
-            if (!weatherIconNode->AtkResNode.IsVisible) return;
+            if (!weatherIconNode->AtkResNode.IsVisible()) return;
             //Background of Weather Icon
             backgroundDrawList.AddImage(
                 naviMapTextureD3D11ShaderResourceView
@@ -370,7 +370,7 @@ internal static class CompassWindow
 #if DEBUG
         catch (Exception e)
         {
-            PluginLog.Error(e.ToString());
+            Plugin.PluginLog.Error(e.ToString());
         }
 #else
         catch
@@ -394,14 +394,14 @@ internal static class CompassWindow
         var drawList = ImGui.GetWindowDrawList();
         var current = prioritizeMouseOverTarget && targetSystem->MouseOverTarget != null
             ? targetSystem->MouseOverTarget
-            : targetSystem->GetCurrentTarget();
+            : targetSystem->GetTargetObject();
         if (current is null) return;
         var distanceFromPlayer = *current switch
         {
             { ObjectKind: var o } when
                 (ObjectKind)o is ObjectKind.Pc or ObjectKind.BattleNpc or ObjectKind.EventNpc
-                => current->YalmDistanceFromPlayerX
-          , _ => byte.MaxValue
+                => current->YalmDistanceFromPlayerX,
+            _ => byte.MaxValue
         };
         if (distanceFromPlayer == byte.MaxValue) return;
         var text                  = $"{prefix}{distanceFromPlayer + 1}{suffix}";
@@ -491,19 +491,19 @@ internal static class CompassWindow
             {
                 var mapIconComponentNode =
                     (AtkComponentNode*)rootComponentNode->Component->UldManager.NodeList[i];
-                if (!mapIconComponentNode->AtkResNode.IsVisible) continue;
+                if (!mapIconComponentNode->AtkResNode.IsVisible()) continue;
                 for (var j = 2; j < componentIconLoopEnd; j++)
                 {
                     var imgNode = (AtkImageNode*)mapIconComponentNode->Component->UldManager.NodeList[j];
                     if (imgNode->AtkResNode.Type != NodeType.Image) continue;
-                    if (!imgNode->AtkResNode.IsVisible || !imgNode->AtkResNode.ParentNode->IsVisible) continue;
+                    if (!imgNode->AtkResNode.IsVisible() || !imgNode->AtkResNode.ParentNode->IsVisible()) continue;
                     var part = imgNode->PartsList->Parts[imgNode->PartId];
                     //NOTE Invariant: It should always be a resource
 #if DEBUG
                     var type = part.UldAsset->AtkTexture.TextureType;
                     if (type != TextureType.Resource)
                     {
-                        PluginLog.Error($"{i} {j} was not a Resource texture");
+                        Plugin.PluginLog.Error($"{i} {j} was not a Resource texture");
                         continue;
                     }
 
@@ -633,6 +633,38 @@ internal static class CompassWindow
                         case 071025: // Quest Complete Marker
                         case 071035: // Quest Complete Red Marker
                         case 071155: // Quest Complete Red Marker
+                        case 070961: // Quest with small arrow for area change
+                        case 070962: // Quest with small arrow for area change
+                        case 070963: // Quest with small arrow for area change
+                        case 070964: // Quest with small arrow for area change
+                        case 070965: // Quest with small arrow for area change
+                        case 070966: // Quest with small arrow for area change
+                        case 070967: // Quest with small arrow for area change
+                        case 070968: // Quest with small arrow for area change
+                        case 070969: // Quest with small arrow for area change
+                        case 070970: // Quest with small arrow for area change
+                        case 070971: // Quest with small arrow for area change
+                        case 070972: // Quest with small arrow for area change
+                        case 070973: // Quest with small arrow for area change
+                        case 070974: // Quest with small arrow for area change
+                        case 070975: // Quest with small arrow for area change
+                        case 070976: // Quest with small arrow for area change
+                        case 070981: // Quest with small arrow for area change
+                        case 070982: // Quest with small arrow for area change
+                        case 070983: // Quest with small arrow for area change
+                        case 070984: // Quest with small arrow for area change
+                        case 070985: // Quest with small arrow for area change
+                        case 070986: // Quest with small arrow for area change
+                        case 070987: // Quest with small arrow for area change
+                        case 070988: // Quest with small arrow for area change
+                        case 070989: // Quest with small arrow for area change
+                        case 070990: // Quest with small arrow for area change
+                        case 070991: // Quest with small arrow for area change
+                        case 070992: // Quest with small arrow for area change
+                        case 070993: // Quest with small arrow for area change
+                        case 070994: // Quest with small arrow for area change
+                        case 070995: // Quest with small arrow for area change
+                        case 070996: // Quest with small arrow for area change
                         case 071063: // BookQuest Ongoing Marker
                         case 071065: // BookQuest Complete Marker
                         case 071083: // LeveQuest Ongoing Marker
@@ -718,7 +750,7 @@ internal static class CompassWindow
 #if DEBUG
         catch (Exception e)
         {
-            PluginLog.Error(e.ToString());
+            Plugin.PluginLog.Error(e.ToString());
         }
 #else
         catch
